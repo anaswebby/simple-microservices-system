@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/infra/">
+    <File Path="infra/docker-compose.yml" />
+  </Folder>
+  <Project Path="services/InventoryService/InventoryService.csproj" />
+  <Project Path="services/NotificationService/NotificationService.csproj" />
+  <Project Path="services/OrderService/OrderService.csproj" />
+</Solution>

@@ -1,0 +1,95 @@
+name: erp-demo
+
+services:
+  kafka:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: kafka
+    command:
+      - redpanda
+      - start
+      - --smp 1
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://kafka:9092
+    ports:
+      - "9092:9092"
+
+  postgres_order:
+    image: postgres:16
+    container_name: postgres_order
+    environment:
+      POSTGRES_DB: orderdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5435:5432"
+    volumes:
+      - order_data:/var/lib/postgresql/data
+
+  postgres_inventory:
+    image: postgres:16
+    container_name: postgres_inventory
+    environment:
+      POSTGRES_DB: inventorydb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5433:5432"
+    volumes:
+      - inventory_data:/var/lib/postgresql/data
+
+  postgres_notification:
+    image: postgres:16
+    container_name: postgres_notification
+    environment:
+      POSTGRES_DB: notificationdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5434:5432"
+    volumes:
+      - notification_data:/var/lib/postgresql/data
+
+  order-service:
+    build:
+      context: ../services/OrderService
+      dockerfile: Dockerfile
+    environment:
+      - ConnectionStrings__DbConnection=Host=postgres_order;Port=5432;Database=orderdb;Username=postgres;Password=admin
+      - KAFKA__BOOTSTRAP=kafka:9092
+    ports:
+      - "5000:8080"
+    depends_on:
+      - kafka
+      - postgres_order
+
+  inventory-service:
+    build:
+      context: ../services/InventoryService
+      dockerfile: Dockerfile
+    environment:
+      - ConnectionStrings__DbConnection=Host=postgres_inventory;Port=5432;Database=inventorydb;Username=postgres;Password=admin
+      - KAFKA__BOOTSTRAP=kafka:9092
+    depends_on:
+      - kafka
+      - postgres_inventory
+
+  notification-service:
+    build:
+      context: ../services/NotificationService
+      dockerfile: Dockerfile
+    environment:
+      - ConnectionStrings__DbConnection=Host=postgres_notification;Port=5432;Database=notificationdb;Username=postgres;Password=admin
+      - KAFKA__BOOTSTRAP=kafka:9092
+    ports:
+      - "5100:80"
+    depends_on:
+      - kafka
+      - postgres_notification
+
+volumes:
+  order_data:
+  inventory_data:
+  notification_data:
